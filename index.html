@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Jarvis Mobile</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script type="text/javascript" src="/eel.js"></script>
+    <style>
+        body { background: #050505; color: #00ffff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .container { text-align: center; border: 2px solid #00ffff; padding: 30px; border-radius: 20px; width: 80%; box-shadow: 0 0 20px #00ffff55; }
+        #status { margin: 20px 0; font-size: 1.2rem; min-height: 50px; }
+        .btn { background: #00ffff; color: #000; border: none; padding: 15px 30px; border-radius: 50px; font-weight: bold; font-size: 1rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="status">Tap to Wake Jarvis</div>
+        <button class="btn" onclick="startListening()">LISTEN</button>
+    </div>
+
+    <script>
+        // --- 1. SPEECH SYNTHESIS (SPEAKING) ---
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // --- 2. SPEECH RECOGNITION (LISTENING) ---
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.continuous = false;
+        recognition.lang = 'en-US';
+
+        function startListening() {
+            recognition.start();
+            document.getElementById('status').innerText = "Listening...";
+        }
+
+        recognition.onresult = async function(event) {
+            const transcript = event.results[0][0].transcript;
+            document.getElementById('status').innerText = "You: " + transcript;
+
+            // Send the text to Python to process
+            let response = await eel.process_command_js(transcript)();
+            
+            // Speak the response back on mobile
+            document.getElementById('status').innerText = response;
+            speak(response);
+        };
+
+        recognition.onerror = function(event) {
+            document.getElementById('status').innerText = "Error: " + event.error;
+        };
+    </script>
+</body>
+</html>
