@@ -1,34 +1,67 @@
-import eel
-import os
-import webbrowser
-from pytube import Search
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Jarvis Mobile</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script type="text/javascript" src="/eel.js"></script>
+    <style>
+        body { background: #0a0b10; color: #00f2ff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .ui-box { text-align: center; border: 2px solid #00f2ff; padding: 40px; border-radius: 20px; width: 85%; box-shadow: 0 0 20px #00f2ff55; }
+        #status { margin: 20px 0; min-height: 50px; font-weight: bold; }
+        .btn { background: #00f2ff; color: #000; border: none; padding: 15px 30px; border-radius: 50px; font-weight: bold; cursor: pointer; }
+        .listening { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0px #ff0055; } 50% { box-shadow: 0 0 20px #ff0055; } 100% { box-shadow: 0 0 0px #ff0055; } }
+    </style>
+</head>
+<body>
+    <div class="ui-box" id="mainBox">
+        <h2>JARVIS SYSTEM</h2>
+        <div id="status">Ready</div>
+        <button class="btn" id="listenBtn" onclick="toggleListening()">START LISTENING</button>
+    </div>
 
-# Initialize Eel
-base_path = os.path.dirname(os.path.abspath(__file__))
-eel.init(os.path.join(base_path, 'web'))
+    <script>
+        const status = document.getElementById('status');
+        const btn = document.getElementById('listenBtn');
+        const box = document.getElementById('mainBox');
 
-@eel.expose
-def process_command_js(command):
-    """This function processes the text sent from the mobile browser"""
-    command = command.lower()
-    print(f"Processing: {command}")
-    
-    if "open" in command:
-        site = command.replace("open", "").strip()
-        webbrowser.open(f"https://www.{site}.com")
-        return f"Opening {site}"
-    
-    elif "play" in command:
-        song = command.replace("play", "").replace("on youtube", "").strip()
-        try:
-            video = Search(song).results[0]
-            webbrowser.open(video.watch_url)
-            return f"Playing {song}"
-        except:
-            return "Video not found"
+        // Voice Out (Phone Speakers)
+        function speak(text) {
+            const synth = window.speechSynthesis;
+            const utter = new SpeechSynthesisUtterance(text);
+            synth.speak(utter);
+        }
+
+        // Voice In (Phone Mic)
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true; // Loops automatically
+
+        function toggleListening() {
+            recognition.start();
+            status.innerText = "Listening...";
+            box.classList.add('listening');
+        }
+
+        recognition.onresult = async (event) => {
+            const command = event.results[event.results.length - 1][0].transcript;
+            status.innerText = "You: " + command;
+
+            // Send to Python for Logic
+            let response = await eel.process_logic(command)();
             
-    return "I heard you, but I don't know that command."
+            status.innerText = response.msg;
+            speak(response.msg);
 
-# To work on mobile, we must use host='0.0.0.0'
-# Replace 8080 with any port you like
-eel.start('index.html', host='0.0.0.0', port=8080, size=(400, 600))
+            if (response.action === "open") {
+                window.open(response.url, '_blank');
+            }
+        };
+
+        recognition.onerror = (err) => {
+            status.innerText = "Mic Error: " + err.error;
+            box.classList.remove('listening');
+        };
+    </script>
+</body>
+</html>
